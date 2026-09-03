@@ -1,0 +1,614 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Инженерный помощник</title>
+<script src="/marked.min.js"></script>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0f1115;
+    --panel: #161920;
+    --panel-2: #1c2029;
+    --border: #262b36;
+    --text: #e8eaed;
+    --muted: #8b93a1;
+    --accent: #4a9eff;
+    --ok: #5fbf7f;
+    --warn: #d4a857;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.5;
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ---- боковая панель с историей ---- */
+  aside {
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .brand {
+    padding: 18px 18px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .brand h1 { font-size: 15px; margin: 0; font-weight: 600; letter-spacing: .01em; }
+  .brand p { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
+
+  .history-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px 8px;
+    font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--muted);
+  }
+  .history-head button {
+    background: none; border: none; color: var(--muted);
+    font-size: 11px; cursor: pointer; padding: 2px 4px;
+  }
+  .history-head button:hover { color: var(--text); }
+  .history-list { overflow-y: auto; padding: 0 10px 16px; flex: 1; min-height: 0; }
+  .history-item {
+    padding: 9px 10px; border-radius: 7px; cursor: pointer;
+    color: #b8bfcb; font-size: 13px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .history-item:hover { background: var(--panel-2); color: var(--text); }
+  .history-empty { padding: 4px 12px; color: #5d6470; font-size: 12px; }
+
+  /* ---- основная область ---- */
+  main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+  .content { flex: 1; overflow-y: auto; padding: 28px 32px 32px; }
+  .content-inner { max-width: 860px; margin: 0 auto; }
+
+  .ask-bar {
+    padding: 18px 32px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+  }
+  .ask-inner { max-width: 860px; margin: 0 auto; display: flex; gap: 10px; }
+  input[type=text] {
+    flex: 1; padding: 11px 14px; font-size: 14px;
+    border: 1px solid var(--border); border-radius: 9px;
+    background: var(--panel-2); color: var(--text);
+  }
+  input[type=text]:focus { outline: none; border-color: var(--accent); }
+  input[type=text]::placeholder { color: #6b7280; }
+  button.primary {
+    padding: 11px 20px; font-size: 14px; font-weight: 500;
+    border: none; border-radius: 9px;
+    background: var(--accent); color: #08111f; cursor: pointer;
+  }
+  button.primary:disabled { opacity: .45; cursor: default; }
+
+  .placeholder { color: var(--muted); text-align: center; padding: 70px 20px; }
+  .placeholder-title { font-size: 15px; color: #a9b1bd; margin-bottom: 18px; }
+  .samples { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+  .sample {
+    background: var(--panel); border: 1px solid var(--border);
+    padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px;
+    color: #b8bfcb;
+  }
+  .sample:hover { border-color: var(--accent); color: var(--text); }
+  .intro {
+    max-width: 560px; margin: 0 auto 26px; text-align: left;
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px 18px;
+    font-size: 13px; line-height: 1.6; color: #9aa2ae;
+  }
+  .intro p { margin: 0 0 10px; }
+  .intro p:last-child { margin-bottom: 0; }
+  .intro b { color: #c3cad4; font-weight: 600; }
+
+  .caution {
+    display: flex; gap: 10px; align-items: flex-start;
+    border: 1px solid #4a3d1e; border-left-width: 3px;
+    background: #201c12; border-radius: 8px;
+    padding: 11px 14px; margin: 16px 0 4px;
+    font-size: 13px; line-height: 1.5; color: #d9c89a;
+  }
+  .caution-icon { color: var(--warn); font-weight: 700; line-height: 1.4; }
+
+  .question-echo {
+    font-size: 15px; font-weight: 500; margin-bottom: 18px;
+    padding-bottom: 14px; border-bottom: 1px solid var(--border);
+  }
+  .answer { line-height: 1.62; }
+  .answer h1, .answer h2, .answer h3, .answer h4 {
+    font-size: 14px; margin: 18px 0 8px; color: #dfe4ea;
+  }
+  .answer ul, .answer ol { padding-left: 22px; margin: 8px 0; }
+  .answer li { margin-bottom: 5px; }
+  .answer p { margin: 8px 0; }
+  .answer code {
+    background: var(--panel-2); padding: 1px 5px; border-radius: 4px; font-size: 13px;
+  }
+  .answer table { border-collapse: collapse; margin: 10px 0; font-size: 13px; }
+  .answer th, .answer td { border: 1px solid var(--border); padding: 6px 10px; }
+
+  .spinner {
+    display: inline-block; width: 13px; height: 13px; margin-right: 9px;
+    border: 2px solid var(--border); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin .7s linear infinite; vertical-align: -2px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .thinking { color: var(--muted); padding: 8px 0; }
+
+  section.block { margin-top: 22px; }
+  .block-head {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; color: var(--muted);
+    cursor: pointer; user-select: none; padding: 6px 0;
+  }
+  .block-head .caret { transition: transform .15s; font-size: 10px; }
+  .block-head.collapsed .caret { transform: rotate(-90deg); }
+
+  .exact {
+    border: 1px solid #2c4634; border-radius: 9px; background: #131c17;
+    overflow: hidden;
+  }
+  .exact-title {
+    padding: 9px 14px; font-size: 12px; color: var(--ok);
+    border-bottom: 1px solid #2c4634;
+  }
+  .exact pre {
+    margin: 0; padding: 12px 14px; font-size: 13px; line-height: 1.55;
+    white-space: pre-wrap; color: #cddbd2; overflow-x: auto;
+    font-family: inherit;
+  }
+
+  .doc { border-left: 2px solid var(--border); padding: 7px 0 7px 12px; margin-bottom: 9px; }
+  .doc-name { font-size: 13px; color: #b8bfcb; }
+  .doc-snippet { font-size: 12px; color: #6d747f; margin-top: 3px; line-height: 1.45; }
+  .rel {
+    display: inline-block; min-width: 38px; margin-right: 9px;
+    font-size: 11px; padding: 1px 6px; border-radius: 5px; text-align: center;
+  }
+  .rel.high { background: #17301f; color: var(--ok); }
+  .rel.mid  { background: #2f2a17; color: var(--warn); }
+  .rel.low  { background: #30201a; color: #c58c73; }
+
+  .table-wrap { border: 1px solid var(--border); border-radius: 9px; overflow: hidden; }
+  table.registry {
+    border-collapse: collapse; width: 100%; font-size: 12px;
+    table-layout: fixed;
+  }
+  table.registry th, table.registry td {
+    padding: 7px 10px; border-bottom: 1px solid var(--border);
+    text-align: left; vertical-align: top;
+    /* переносим по словам: без этого длинные названия растягивают таблицу
+       за пределы экрана и появляется горизонтальная прокрутка */
+    overflow-wrap: anywhere; hyphens: auto;
+  }
+  table.registry th {
+    color: var(--muted); font-weight: 500; background: var(--panel);
+    font-size: 11px; line-height: 1.3;
+  }
+  table.registry tr:last-child td { border-bottom: none; }
+  table.registry td.num { text-align: right; white-space: nowrap; }
+
+  .upload {
+    border-top: 1px solid var(--border); padding: 12px 18px;
+    font-size: 12px; color: var(--muted);
+  }
+  .upload label {
+    display: block; padding: 8px 12px; border: 1px dashed var(--border);
+    border-radius: 8px; cursor: pointer; text-align: center; color: #9aa2ae;
+  }
+  .upload label:hover { border-color: var(--accent); color: var(--text); }
+  .upload input { display: none; }
+  .upload-status { margin-top: 7px; font-size: 12px; }
+  .docs-btn {
+    width: 100%; margin-top: 8px; padding: 7px;
+    background: none; border: 1px solid var(--border); border-radius: 8px;
+    color: #9aa2ae; font-size: 12px; cursor: pointer;
+  }
+  .docs-btn:hover { border-color: var(--accent); color: var(--text); }
+
+  .modal {
+    position: fixed; inset: 0; background: rgba(0,0,0,.6);
+    display: flex; align-items: center; justify-content: center; z-index: 10;
+  }
+  .modal-box {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 11px;
+    width: min(560px, 92vw); max-height: 78vh; display: flex; flex-direction: column;
+  }
+  .modal-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px; border-bottom: 1px solid var(--border); font-size: 14px;
+  }
+  .modal-head button {
+    background: none; border: none; color: var(--muted);
+    font-size: 15px; cursor: pointer; line-height: 1;
+  }
+  .modal-head button:hover { color: var(--text); }
+  .modal-body { overflow-y: auto; padding: 8px 10px 14px; }
+
+  .doc-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; border-radius: 8px;
+  }
+  .doc-row:hover { background: var(--panel-2); }
+  .doc-row-name { flex: 1; font-size: 13px; overflow-wrap: anywhere; }
+  .doc-row-meta { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .doc-row button {
+    background: none; border: 1px solid var(--border); border-radius: 6px;
+    color: #c58c73; font-size: 11px; padding: 4px 9px; cursor: pointer;
+  }
+  .doc-row button:hover { border-color: #c58c73; }
+  .modal-empty { padding: 26px; text-align: center; color: var(--muted); font-size: 13px; }
+
+  .error { color: #d98080; white-space: pre-wrap; overflow-wrap: anywhere; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+
+<aside>
+  <div class="brand">
+    <h1>Инженерный помощник</h1>
+    <p>Реестр оборудования и документация</p>
+  </div>
+
+  <div class="history-head">
+    <span>История</span>
+    <button id="clear-history" title="Очистить историю">Очистить</button>
+  </div>
+  <div class="history-list" id="history-list">
+    <div class="history-empty">Пока пусто</div>
+  </div>
+
+  <div class="upload">
+    <label for="file-input">Добавить документ</label>
+    <input type="file" id="file-input" accept=".pdf,.docx,.xlsx,.csv">
+    <div class="upload-status" id="upload-status"></div>
+    <button type="button" class="docs-btn" id="docs-btn">Мои документы</button>
+  </div>
+</aside>
+
+<div class="modal" id="docs-modal" hidden>
+  <div class="modal-box">
+    <div class="modal-head">
+      <span>Загруженные документы</span>
+      <button type="button" id="docs-close" title="Закрыть">✕</button>
+    </div>
+    <div class="modal-body" id="docs-body"></div>
+  </div>
+</div>
+
+<main>
+  <div class="ask-bar">
+    <form class="ask-inner" id="chat-form">
+      <input type="text" id="question" placeholder="Что хотите узнать?" autocomplete="off">
+      <button type="submit" class="primary" id="submit-btn">Спросить</button>
+    </form>
+  </div>
+
+  <div class="content">
+    <div class="content-inner" id="result">
+      <div class="placeholder">
+        <div class="placeholder-title">Задайте вопрос по оборудованию или документации</div>
+
+        <div class="intro">
+          <p>Ответы формируются <b>только по реестру оборудования и загруженной
+          документации</b>. Того, чего нет в этих материалах, помощник не знает —
+          он не заменяет справочники, ГОСТы и консультацию специалиста.</p>
+          <p>Под каждым ответом видны источники: строки реестра и фрагменты
+          документов, по которым он составлен. <b>Перед работами и решениями
+          сверяйтесь с первоисточником</b> — программа может ошибаться или
+          понять вопрос иначе.</p>
+        </div>
+
+        <div class="samples">
+          <div class="sample">Сколько всего светильников</div>
+          <div class="sample">Как обслуживать РИП-12</div>
+          <div class="sample">Что нужно заменить в 2026 году</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+const form = document.getElementById('chat-form');
+const questionInput = document.getElementById('question');
+const submitBtn = document.getElementById('submit-btn');
+const result = document.getElementById('result');
+const historyList = document.getElementById('history-list');
+
+// key — колонка реестра, label — короткий заголовок, width — доля ширины.
+// Длинные названия колонок и nowrap выталкивали таблицу за экран, поэтому
+// заголовки сокращены, а ширины заданы явно.
+const REGISTRY_COLUMNS = [
+  { key: 'Наименование и техническая характеристика',      label: 'Наименование',   width: '26%' },
+  { key: 'Тип, марка, модель, модификация, характеристики', label: 'Тип, модель',   width: '30%' },
+  { key: 'Количество',                                      label: 'Кол-во',        width: '7%',  num: true },
+  { key: 'Адрес расположения здания (помещения) НКО',       label: 'Адрес',         width: '21%' },
+  { key: 'Место установки: объект, помещение, координаты',  label: 'Место',         width: '10%' },
+  { key: 'Год ввода в эксплуатацию',                        label: 'Год',           width: '6%',  num: true },
+];
+
+document.querySelectorAll('.sample').forEach(el => {
+  el.addEventListener('click', () => ask(el.textContent));
+});
+
+document.getElementById('clear-history').addEventListener('click', async () => {
+  try { await fetch('/api/history', { method: 'DELETE' }); } catch (e) {}
+  loadHistory();
+});
+
+form.addEventListener('submit', e => {
+  e.preventDefault();
+  ask(questionInput.value.trim());
+});
+
+async function ask(question) {
+  if (!question) return;
+  questionInput.value = question;
+  submitBtn.disabled = true;
+  result.innerHTML = `<div class="question-echo">${escapeHtml(question)}</div>`
+                   + '<div class="thinking"><span class="spinner"></span>Ищу в документации…</div>';
+
+  try {
+    const resp = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question }),
+    });
+
+    const data = await readJson(resp);
+    if (!resp.ok) {
+      result.innerHTML = `<div class="question-echo">${escapeHtml(question)}</div>`
+                       + `<div class="error">${escapeHtml(data.detail || 'Ошибка сервера')}</div>`;
+      return;
+    }
+    renderResult(question, data);
+    loadHistory();
+  } catch (err) {
+    result.innerHTML = `<div class="error">Ошибка: ${escapeHtml(String(err))}</div>`;
+  } finally {
+    submitBtn.disabled = false;
+  }
+}
+
+// Markdown допускает сырой HTML, а ответ модели зависит от содержимого
+// загруженных документов. Экранируем теги до разбора: разметка остаётся,
+// а <script> и обработчики событий превращаются в текст.
+function renderMarkdown(text) {
+  const escaped = (text || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return marked.parse(escaped);
+}
+
+function renderResult(question, data) {
+  let html = `<div class="question-echo">${escapeHtml(question)}</div>`;
+  html += `<div class="answer">${renderMarkdown(data.answer)}</div>`;
+
+  if (data.caution) {
+    html += `<div class="caution">
+      <span class="caution-icon">!</span>
+      <span>${escapeHtml(data.caution)}</span>
+    </div>`;
+  }
+
+  if (data.exact_counts) {
+    html += `<section class="block"><div class="exact">
+      <div class="exact-title">Точный подсчёт по реестру</div>
+      <pre>${escapeHtml(data.exact_counts)}</pre></div></section>`;
+  }
+
+  if (data.registry_rows && data.registry_rows.length) {
+    html += `<section class="block">
+      <div class="block-head">
+        <span class="caret">▾</span> Реестр — найдено позиций: ${data.registry_rows.length}
+      </div>
+      <div class="table-wrap">${registryTable(data.registry_rows)}</div>
+    </section>`;
+  }
+
+  if (data.found_docs && data.found_docs.length) {
+    let docs = '';
+    for (const doc of data.found_docs) {
+      const cls = doc.relevance >= 70 ? 'high' : doc.relevance >= 55 ? 'mid' : 'low';
+      docs += `<div class="doc">
+        <span class="rel ${cls}">${doc.relevance}%</span>
+        <span class="doc-name">${escapeHtml(doc.title)}</span>
+        <div class="doc-snippet">${escapeHtml(doc.snippet)}…</div>
+      </div>`;
+    }
+    html += `<section class="block">
+      <div class="block-head collapsed">
+        <span class="caret">▾</span> Найдено в документации: ${data.found_docs.length}
+      </div>
+      <div hidden>${docs}</div>
+    </section>`;
+  }
+
+  result.innerHTML = html;
+
+  result.querySelectorAll('.block-head').forEach(head => {
+    head.addEventListener('click', () => {
+      head.classList.toggle('collapsed');
+      // ищем соседний блок, а не по id: одинаковые id встречаются,
+      // когда на странице несколько ответов
+      const body = head.nextElementSibling;
+      if (body) body.hidden = head.classList.contains('collapsed');
+    });
+  });
+}
+
+function registryTable(rows) {
+  // колонки, пустые во всех строках, не показываем — «Место установки»
+  // заполнено далеко не всегда и только занимает ширину
+  const columns = REGISTRY_COLUMNS.filter(
+    col => rows.some(row => (row[col.key] || '').trim())
+  );
+  const totalWidth = columns.reduce((sum, col) => sum + parseFloat(col.width), 0);
+
+  let html = '<table class="registry"><colgroup>';
+  for (const col of columns) {
+    html += `<col style="width:${(parseFloat(col.width) / totalWidth * 100).toFixed(1)}%">`;
+  }
+  html += '</colgroup><thead><tr>';
+  for (const col of columns) html += `<th>${escapeHtml(col.label)}</th>`;
+  html += '</tr></thead><tbody>';
+
+  for (const row of rows) {
+    html += '<tr>';
+    for (const col of columns) {
+      html += `<td${col.num ? ' class="num"' : ''}>${escapeHtml(row[col.key] || '')}</td>`;
+    }
+    html += '</tr>';
+  }
+  return html + '</tbody></table>';
+}
+
+async function loadHistory() {
+  try {
+    const resp = await fetch('/api/history?limit=30');
+    const turns = await readJson(resp);
+    if (!turns.length) {
+      historyList.innerHTML = '<div class="history-empty">Пока пусто</div>';
+      return;
+    }
+    historyList.innerHTML = turns.slice().reverse()
+      .map(t => `<div class="history-item" title="${escapeHtml(t.question)}">${escapeHtml(t.question)}</div>`)
+      .join('');
+    historyList.querySelectorAll('.history-item').forEach(el => {
+      el.addEventListener('click', () => ask(el.getAttribute('title')));
+    });
+  } catch (e) {
+    historyList.innerHTML = '<div class="history-empty">Не удалось загрузить</div>';
+  }
+}
+
+const fileInput = document.getElementById('file-input');
+const uploadStatus = document.getElementById('upload-status');
+
+fileInput.addEventListener('change', async () => {
+  const file = fileInput.files[0];
+  if (!file) return;
+
+  uploadStatus.textContent = 'Загрузка…';
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const resp = await fetch('/api/documents', { method: 'POST', body: formData });
+    const data = await readJson(resp);
+    if (!resp.ok) {
+      uploadStatus.innerHTML = `<span class="error">${escapeHtml(data.detail || 'Ошибка')}</span>`;
+      return;
+    }
+    pollUpload(data.upload_id);
+  } catch (err) {
+    uploadStatus.innerHTML = '<span class="error">Ошибка загрузки</span>';
+  }
+});
+
+async function pollUpload(uploadId) {
+  uploadStatus.innerHTML = '<span class="spinner"></span>Обрабатывается…';
+  const timer = setInterval(async () => {
+    const resp = await fetch(`/api/documents/${uploadId}`);
+    const data = await readJson(resp);
+    if (data.status === 'done') {
+      clearInterval(timer);
+      uploadStatus.textContent = `Готово: ${data.chunks} фрагментов`;
+      fileInput.value = '';
+      if (!docsModal.hidden) openDocs();
+    } else if (data.status === 'error') {
+      clearInterval(timer);
+      uploadStatus.innerHTML = `<span class="error">${escapeHtml(data.error)}</span>`;
+      fileInput.value = '';
+    }
+  }, 2000);
+}
+
+// сервер может ответить страницей ошибки вместо JSON: показываем её
+// текст, иначе браузер сообщает только «invalid JSON»
+async function readJson(resp) {
+  const raw = await resp.text();
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    const type = resp.headers.get('content-type') || 'не указан';
+    const head = raw.slice(0, 600) || '(пустой ответ)';
+    return {
+      detail: `Сервер ответил не JSON.\n\nКод: ${resp.status}\n`
+            + `Тип: ${type}\nДлина: ${raw.length}\n\nНачало ответа:\n${head}`,
+    };
+  }
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+/* ---- окно с загруженными документами ---- */
+const docsModal = document.getElementById('docs-modal');
+const docsBody = document.getElementById('docs-body');
+
+document.getElementById('docs-btn').addEventListener('click', openDocs);
+document.getElementById('docs-close').addEventListener('click', () => docsModal.hidden = true);
+docsModal.addEventListener('click', e => {
+  if (e.target === docsModal) docsModal.hidden = true;
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') docsModal.hidden = true;
+});
+
+async function openDocs() {
+  docsModal.hidden = false;
+  docsBody.innerHTML = '<div class="modal-empty"><span class="spinner"></span>Загрузка…</div>';
+  try {
+    const docs = await readJson(await fetch("/api/documents"));
+    renderDocs(docs);
+  } catch (e) {
+    docsBody.innerHTML = '<div class="modal-empty error">Не удалось получить список</div>';
+  }
+}
+
+function renderDocs(docs) {
+  if (!docs.length) {
+    docsBody.innerHTML = '<div class="modal-empty">Вы пока не добавляли документы</div>';
+    return;
+  }
+  docsBody.innerHTML = docs.map(d => `
+    <div class="doc-row" data-hash="${escapeHtml(d.content_hash)}">
+      <span class="doc-row-name">${escapeHtml(d.source_file)}</span>
+      <span class="doc-row-meta">${d.chunk_count} фрагм.</span>
+      <button type="button">Удалить</button>
+    </div>`).join('');
+
+  docsBody.querySelectorAll('.doc-row button').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const row = btn.closest('.doc-row');
+      if (!confirm(`Удалить «${row.querySelector('.doc-row-name').textContent}»?`)) return;
+      btn.disabled = true;
+      btn.textContent = 'Удаляю…';
+      try {
+        await fetch(`/api/documents/${row.dataset.hash}`, { method: 'DELETE' });
+        openDocs();
+      } catch (e) {
+        btn.textContent = 'Ошибка';
+      }
+    });
+  });
+}
+
+loadHistory();
+</script>
+</body>
+</html>
