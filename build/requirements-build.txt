@@ -1,0 +1,9 @@
+# Зависимости для машины, на которой собирается дистрибутив.
+# Ставится на чистую Windows поверх Python 3.12.
+#
+#   py -3.12 -m venv .venv
+#   .venv\Scripts\pip install -r build\requirements-build.txt
+
+-r ../requirements.txt
+
+pyinstaller==6.22.2
